@@ -117,6 +117,8 @@ open class DeveloperToolContentPanel(protected val developerToolNode: DeveloperT
   private fun createMainContent(): JComponent {
     tabs = JBTabsFactory.createTabs(developerToolNode.project, developerToolNode.parentDisposable)
 
+    restoreTabOrder()
+
     developerToolNode.developerTools.forEach { addWorkbench(it) }
     selectedDeveloperToolInstance = AtomicProperty(tabs.selectedInfo!!.castedObject())
 
@@ -163,7 +165,11 @@ open class DeveloperToolContentPanel(protected val developerToolNode: DeveloperT
     tabs.addTab(tabInfo)
     tabs.select(tabInfo, false)
     tabs.setPopupGroup(
-      DefaultActionGroup(createRenameWorkbenchAction()),
+      DefaultActionGroup(
+        createRenameWorkbenchAction(),
+        createMoveTabAction(true),
+        createMoveTabAction(false),
+      ),
       DeveloperToolContentPanel::class.java.name,
       true,
     )
@@ -193,6 +199,100 @@ open class DeveloperToolContentPanel(protected val developerToolNode: DeveloperT
 
       override fun getActionUpdateThread() = ActionUpdateThread.BGT
     }
+
+  private fun createMoveTabAction(left: Boolean) =
+    object : DumbAwareAction(if (left) "Move Left" else "Move Right") {
+      override fun actionPerformed(e: AnActionEvent) {
+        val selectedTab = tabs.selectedInfo ?: return
+        val selectedIndex = tabs.getIndexOf(selectedTab)
+
+        if (selectedIndex == -1) return
+
+        val newIndex = if (left) {
+          (selectedIndex - 1).coerceAtLeast(0)
+        } else {
+          (selectedIndex + 1).coerceAtMost(tabs.tabCount - 1)
+        }
+
+        if (newIndex != selectedIndex) {
+          moveTab(selectedIndex, newIndex)
+          saveTabOrder()
+        }
+      }
+
+      override fun update(e: AnActionEvent) {
+        val selectedTab = tabs.selectedInfo
+        val selectedIndex = if (selectedTab != null) tabs.getIndexOf(selectedTab) else -1
+
+        e.presentation.isEnabled = when {
+          selectedTab == null -> false
+          left -> selectedIndex > 0
+          else -> selectedIndex < (tabs.tabCount - 1)
+        }
+      }
+
+      override fun getActionUpdateThread() = ActionUpdateThread.BGT
+    }
+
+  private fun moveTab(fromIndex: Int, toIndex: Int) {
+    if (fromIndex == toIndex) return
+
+    val allTabs = tabs.tabs.toList()
+    val tabToMove = allTabs[fromIndex]
+
+    // Remove the tab at fromIndex
+    tabs.removeTab(tabToMove)
+
+    // Get the updated list after removal
+    val remainingTabs = tabs.tabs.toList()
+
+    // Calculate the correct insertion position
+    val insertAtIndex = when {
+      toIndex == 0 -> 0
+      toIndex >= remainingTabs.size -> remainingTabs.size
+      fromIndex < toIndex -> toIndex - 1 // Moving right, adjust for removal
+      else -> toIndex // Moving left, no adjustment needed
+    }
+
+    // Insert at the new position
+    if (insertAtIndex >= remainingTabs.size) {
+      tabs.addTab(tabToMove)
+    } else {
+      tabs.addTab(tabToMove, insertAtIndex)
+    }
+
+    // Reselect the moved tab
+    tabs.select(tabToMove, false)
+  }
+
+  private fun saveTabOrder() {
+    val tabOrder = tabs.tabs.map { it.text }
+    developerToolNode.settings.setWorkbenchTabOrder(tabOrder)
+  }
+
+  private fun restoreTabOrder() {
+    val savedOrder = developerToolNode.settings.getWorkbenchTabOrder()
+    val developerToolsMap = developerToolNode.developerTools.associateBy { it.configuration.name }
+
+    if (savedOrder.isNotEmpty()) {
+      // Add tabs in saved order
+      savedOrder.forEach { tabName ->
+        developerToolsMap[tabName]?.let { developerToolContainer ->
+          addWorkbench(developerToolContainer)
+        }
+      }
+
+      // Add any new developer tools that weren't in the saved order
+      developerToolNode.developerTools.forEach { developerToolContainer ->
+        if (!savedOrder.contains(developerToolContainer.configuration.name)) {
+          addWorkbench(developerToolContainer)
+        }
+      }
+    } else {
+      // No saved order, add in default order
+      developerToolNode.developerTools.forEach { addWorkbench(it) }
+    }
+  }
 
   private fun createDestroyWorkbenchAction(developerUiTool: DeveloperUiTool, tabInfo: TabInfo) =
     DestroyWorkbenchAction(

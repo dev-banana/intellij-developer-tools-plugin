@@ -34,6 +34,8 @@ abstract class DeveloperToolsInstanceSettings : PersistentStateComponent<Instanc
   private val developerToolsConfigurations =
     ConcurrentHashMap<String, CopyOnWriteArrayList<DeveloperToolConfiguration>>()
 
+  private var workbenchTabOrder: MutableList<String> = mutableListOf()
+
   val lastSelectedContentNodeId: ValueProperty<String?> = ValueProperty(null)
   var expandedGroupNodeIds: MutableSet<String>? = null
     private set
@@ -70,6 +72,12 @@ abstract class DeveloperToolsInstanceSettings : PersistentStateComponent<Instanc
     developerToolsConfigurations[developerToolId]?.remove(developerToolConfiguration)
   }
 
+  fun getWorkbenchTabOrder(): List<String> = workbenchTabOrder.toList()
+
+  fun setWorkbenchTabOrder(order: List<String>) {
+    workbenchTabOrder = order.toMutableList()
+  }
+
   override fun getState(): InstanceState {
     val stateDeveloperToolsConfigurations =
       developerToolsConfigurations
@@ -86,12 +94,14 @@ abstract class DeveloperToolsInstanceSettings : PersistentStateComponent<Instanc
       developerToolsConfigurations = stateDeveloperToolsConfigurations,
       lastSelectedContentNodeId = lastSelectedContentNodeId.get(),
       expandedGroupNodeIds = expandedGroupNodeIds?.toList(),
+      workbenchTabOrder = workbenchTabOrder.toList(),
     )
   }
 
   override fun loadState(state: InstanceState) {
     lastSelectedContentNodeId.set(state.lastSelectedContentNodeId)
     setExpandedGroupNodeIds(state.expandedGroupNodeIds?.toSet() ?: emptySet())
+    workbenchTabOrder = state.workbenchTabOrder?.toMutableList() ?: mutableListOf()
 
     val statePluginVersion: PluginInfo.PluginVersion? = state.pluginVersion?.toPluginVersion()
 
@@ -181,6 +191,8 @@ abstract class DeveloperToolsInstanceSettings : PersistentStateComponent<Instanc
     @get:Attribute("lastSelectedContentNodeId") var lastSelectedContentNodeId: String? = null,
     @get:XCollection(style = v2, elementName = "expandedGroupNodeId")
     var expandedGroupNodeIds: List<String>? = null,
+    @get:XCollection(style = v2, elementName = "workbenchTabOrder")
+    var workbenchTabOrder: List<String>? = null,
   )
 
   // -- Inner Type ---------------------------------------------------------- //
