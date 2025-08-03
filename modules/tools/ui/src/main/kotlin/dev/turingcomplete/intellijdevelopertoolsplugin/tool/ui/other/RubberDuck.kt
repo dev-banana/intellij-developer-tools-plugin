@@ -3,9 +3,11 @@ package dev.turingcomplete.intellijdevelopertoolsplugin.tool.ui.other
 import com.intellij.ide.BrowserUtil
 import com.intellij.openapi.Disposable
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBLabel
 import com.intellij.ui.dsl.builder.Align
 import com.intellij.ui.dsl.builder.Panel
+import com.intellij.ui.dsl.builder.bindText
 import com.intellij.util.ui.components.BorderLayoutPanel
 import dev.turingcomplete.intellijdevelopertoolsplugin.settings.DeveloperToolConfiguration
 import dev.turingcomplete.intellijdevelopertoolsplugin.tool.ui.base.DeveloperUiTool
@@ -17,8 +19,15 @@ import javax.imageio.ImageIO
 import javax.swing.ImageIcon
 import javax.swing.JLabel
 
-class RubberDuck(parentDisposable: Disposable) : DeveloperUiTool(parentDisposable) {
+class RubberDuck(configuration: DeveloperToolConfiguration, parentDisposable: Disposable) : DeveloperUiTool(parentDisposable) {
   // -- Properties ---------------------------------------------------------- //
+
+  private val duckName = configuration.register(
+    key = "duckName",
+    defaultValue = "Rubber Duck",
+    propertyType = DeveloperToolConfiguration.PropertyType.INPUT
+  )
+
   // -- Initialization ------------------------------------------------------ //
   // -- Exposed Methods ----------------------------------------------------- //
 
@@ -35,6 +44,12 @@ class RubberDuck(parentDisposable: Disposable) : DeveloperUiTool(parentDisposabl
             .trimMargin()
         )
       )
+    }
+
+    row("Duck Name:") {
+      textField()
+        .bindText(duckName)
+        .align(Align.FILL)
     }
 
     row {
@@ -78,7 +93,7 @@ class RubberDuck(parentDisposable: Disposable) : DeveloperUiTool(parentDisposabl
       project: Project?,
       parentDisposable: Disposable,
       context: DeveloperUiToolContext,
-    ): ((DeveloperToolConfiguration) -> RubberDuck) = { RubberDuck(parentDisposable) }
+    ): ((DeveloperToolConfiguration) -> RubberDuck) = { configuration  -> RubberDuck(configuration , parentDisposable) }
   }
 
   // -- Companion Object ---------------------------------------------------- //
