@@ -64,7 +64,20 @@ class RubberDuck(configuration: DeveloperToolConfiguration, parentDisposable: Di
                   val read = ImageIO.read(it)
                   val scaledInstance =
                     read.getScaledInstance(read.width.div(2), read.height.div(2), SCALE_SMOOTH)
-                  addToCenter(JLabel(ImageIcon(scaledInstance)))
+
+                  val clickableDuck = JLabel(ImageIcon(scaledInstance)).apply {
+                    toolTipText = "Quack me!"
+                    addMouseListener(object : java.awt.event.MouseAdapter() {
+                      override fun mouseClicked(e: java.awt.event.MouseEvent?) {
+                        Messages.showInfoMessage(
+                          "Hello, I'm ${duckName.get()} !",
+                          "🐤 Quack!"
+                        )
+                      }
+                    })
+                  }
+
+                  addToCenter(clickableDuck)
                 }
             }
           )
